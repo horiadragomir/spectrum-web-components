@@ -47,6 +47,12 @@ export class TextfieldBase extends ManageHelpText(Focusable) {
         return [textfieldStyles, checkmarkStyles];
     }
 
+    private _inputRef?: HTMLInputElement | HTMLTextAreaElement;
+    private _formRef?: HTMLFormElement;
+
+    @query('#formWrapper')
+    protected formElement!: HTMLFormElement;
+
     @property({ attribute: 'allowed-keys' })
     allowedKeys = '';
 
@@ -195,6 +201,81 @@ export class TextfieldBase extends ManageHelpText(Focusable) {
         this.focused = !this.readonly && false;
     }
 
+    private _eventHandlers = {
+        input: this.handleInput.bind(this),
+        change: this.handleChange.bind(this),
+        focus: this.onFocus.bind(this),
+        blur: this.onBlur.bind(this),
+        submit: this.handleInputSubmit.bind(this),
+    };
+
+    protected override firstUpdated(changes: PropertyValues): void {
+        super.firstUpdated(changes);
+        this._inputRef = this.inputElement;
+        if (this.formElement) {
+            this._formRef = this.formElement;
+            this.formElement.addEventListener(
+                'submit',
+                this._eventHandlers.submit
+            );
+            this.inputElement.addEventListener(
+                'change',
+                this._eventHandlers['change']
+            );
+            this.inputElement.addEventListener(
+                'input',
+                this._eventHandlers['input']
+            );
+            this.inputElement.addEventListener(
+                'focus',
+                this._eventHandlers['focus']
+            );
+            this.inputElement.addEventListener(
+                'blur',
+                this._eventHandlers['blur']
+            );
+        }
+    }
+
+    override disconnectedCallback(): void {
+        this._inputRef?.removeEventListener(
+            'change',
+            this._eventHandlers['change']
+        );
+        this._inputRef?.removeEventListener(
+            'input',
+            this._eventHandlers['input']
+        );
+        this._inputRef?.removeEventListener(
+            'focus',
+            this._eventHandlers['focus']
+        );
+        this._inputRef?.removeEventListener(
+            'blur',
+            this._eventHandlers['blur']
+        );
+        if (this._formRef) {
+            this._formRef.remove();
+            this._formRef.removeEventListener(
+                'submit',
+                this._eventHandlers.submit
+            );
+        }
+        this._inputRef = undefined;
+        this._formRef = undefined;
+        super.disconnectedCallback();
+    }
+
+    private handleInputSubmit(event: Event): void {
+        this.dispatchEvent(
+            new Event('submit', {
+                cancelable: true,
+                bubbles: true,
+            })
+        );
+        event.preventDefault();
+    }
+
     protected renderStateIcons(): TemplateResult | typeof nothing {
         if (this.invalid) {
             return html`
@@ -237,10 +318,6 @@ export class TextfieldBase extends ManageHelpText(Focusable) {
                 pattern=${ifDefined(this.pattern)}
                 placeholder=${this.placeholder}
                 .value=${this.displayValue}
-                @change=${this.handleChange}
-                @input=${this.handleInput}
-                @focus=${this.onFocus}
-                @blur=${this.onBlur}
                 ?disabled=${this.disabled}
                 ?required=${this.required}
                 ?readonly=${this.readonly}
@@ -252,30 +329,28 @@ export class TextfieldBase extends ManageHelpText(Focusable) {
     private get renderInput(): TemplateResult {
         return html`
             <!-- @ts-ignore -->
-            <input
-                type=${this.type}
-                aria-describedby=${this.helpTextId}
-                aria-label=${this.label || this.placeholder}
-                aria-invalid=${ifDefined(this.invalid || undefined)}
-                class="input"
-                maxlength=${ifDefined(
-                    this.maxlength > -1 ? this.maxlength : undefined
-                )}
-                minlength=${ifDefined(
-                    this.minlength > -1 ? this.minlength : undefined
-                )}
-                pattern=${ifDefined(this.pattern)}
-                placeholder=${this.placeholder}
-                .value=${live(this.displayValue)}
-                @change=${this.handleChange}
-                @input=${this.handleInput}
-                @focus=${this.onFocus}
-                @blur=${this.onBlur}
-                ?disabled=${this.disabled}
-                ?required=${this.required}
-                ?readonly=${this.readonly}
-                autocomplete=${ifDefined(this.autocomplete)}
-            />
+            <form id="formWrapper">
+                <input
+                    type=${this.type}
+                    aria-describedby=${this.helpTextId}
+                    aria-label=${this.label || this.placeholder}
+                    aria-invalid=${ifDefined(this.invalid || undefined)}
+                    class="input"
+                    maxlength=${ifDefined(
+                        this.maxlength > -1 ? this.maxlength : undefined
+                    )}
+                    minlength=${ifDefined(
+                        this.minlength > -1 ? this.minlength : undefined
+                    )}
+                    pattern=${ifDefined(this.pattern)}
+                    placeholder=${this.placeholder}
+                    .value=${live(this.displayValue)}
+                    ?disabled=${this.disabled}
+                    ?required=${this.required}
+                    ?readonly=${this.readonly}
+                    autocomplete=${ifDefined(this.autocomplete)}
+                />
+            </form>
         `;
     }
 
