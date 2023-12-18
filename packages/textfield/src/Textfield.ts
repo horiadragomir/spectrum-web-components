@@ -59,7 +59,7 @@ export class TextfieldBase extends ManageHelpText(Focusable) {
     @property({ type: Boolean, reflect: true })
     public focused = false;
 
-    @query('.input')
+    @query('input.input, textarea.input')
     protected inputElement!: HTMLInputElement | HTMLTextAreaElement;
 
     @property({ type: Boolean, reflect: true })
@@ -134,7 +134,7 @@ export class TextfieldBase extends ManageHelpText(Focusable) {
         | HTMLTextAreaElement['autocomplete'];
 
     public override get focusElement(): HTMLInputElement | HTMLTextAreaElement {
-        return this.inputElement;
+        return this._inputRef ?? this.inputElement;
     }
 
     /**
@@ -261,7 +261,6 @@ export class TextfieldBase extends ManageHelpText(Focusable) {
                 this._eventHandlers.submit
             );
         }
-        this._inputRef = undefined;
         this._formRef = undefined;
         super.disconnectedCallback();
     }
@@ -329,7 +328,7 @@ export class TextfieldBase extends ManageHelpText(Focusable) {
     private get renderInput(): TemplateResult {
         return html`
             <!-- @ts-ignore -->
-            <form id="formWrapper">
+            <form id="formWrapper" class="input">
                 <input
                     type=${this.type}
                     aria-describedby=${this.helpTextId}
@@ -345,6 +344,10 @@ export class TextfieldBase extends ManageHelpText(Focusable) {
                     pattern=${ifDefined(this.pattern)}
                     placeholder=${this.placeholder}
                     .value=${live(this.displayValue)}
+                    @change=${this.handleChange}
+                    @input=${this.handleInput}
+                    @focus=${this.onFocus}
+                    @blur=${this.onBlur}
                     ?disabled=${this.disabled}
                     ?required=${this.required}
                     ?readonly=${this.readonly}

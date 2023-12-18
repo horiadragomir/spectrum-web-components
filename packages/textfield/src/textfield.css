@@ -142,3 +142,9 @@ textarea {
         var(--spectrum-alias-input-border-color-quiet-disabled)
     );
 }
+
+form.input {
+    display: flex;
+    padding: 0 !important;
+    border: 0;
+}
