@@ -317,6 +317,10 @@ export class TextfieldBase extends ManageHelpText(Focusable) {
                 pattern=${ifDefined(this.pattern)}
                 placeholder=${this.placeholder}
                 .value=${this.displayValue}
+                @change=${this.handleChange}
+                @input=${this.handleInput}
+                @focus=${this.onFocus}
+                @blur=${this.onBlur}
                 ?disabled=${this.disabled}
                 ?required=${this.required}
                 ?readonly=${this.readonly}
@@ -344,10 +348,6 @@ export class TextfieldBase extends ManageHelpText(Focusable) {
                     pattern=${ifDefined(this.pattern)}
                     placeholder=${this.placeholder}
                     .value=${live(this.displayValue)}
-                    @change=${this.handleChange}
-                    @input=${this.handleInput}
-                    @focus=${this.onFocus}
-                    @blur=${this.onBlur}
                     ?disabled=${this.disabled}
                     ?required=${this.required}
                     ?readonly=${this.readonly}
