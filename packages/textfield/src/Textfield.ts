@@ -62,7 +62,7 @@ export class TextfieldBase extends ManageHelpText(Focusable) {
     @property({ type: Boolean, reflect: true })
     public focused = false;
 
-    @query('.input, input.input, textarea.input')
+    @query('input, input.input, textarea.input')
     protected inputElement!: HTMLInputElement | HTMLTextAreaElement;
 
     @property({ type: Boolean, reflect: true })
@@ -264,6 +264,15 @@ export class TextfieldBase extends ManageHelpText(Focusable) {
         super.connectedCallback();
         if (isWebKit()) {
             this._firstUpdateAfterConnected = true;
+            if (this._formRef) {
+                const formContainer =
+                    this.shadowRoot.querySelector('#form-container');
+                if (formContainer) {
+                    formContainer.appendChild(this._formRef);
+                    this.requestUpdate();
+                }
+                this._formRef = undefined;
+            }
         }
     }
 
@@ -292,7 +301,6 @@ export class TextfieldBase extends ManageHelpText(Focusable) {
                     this._eventHandlers.submit
                 );
             }
-            this._formRef = undefined;
         }
         super.disconnectedCallback();
     }
@@ -355,28 +363,30 @@ export class TextfieldBase extends ManageHelpText(Focusable) {
         if (isWebKit()) {
             return html`
                 <!-- @ts-ignore -->
-                <form id="formWrapper" class="input">
-                    <input
-                        type=${this.type}
-                        aria-describedby=${this.helpTextId}
-                        aria-label=${this.label || this.placeholder}
-                        aria-invalid=${ifDefined(this.invalid || undefined)}
-                        class="input"
-                        maxlength=${ifDefined(
-                            this.maxlength > -1 ? this.maxlength : undefined
-                        )}
-                        minlength=${ifDefined(
-                            this.minlength > -1 ? this.minlength : undefined
-                        )}
-                        pattern=${ifDefined(this.pattern)}
-                        placeholder=${this.placeholder}
-                        .value=${live(this.displayValue)}
-                        ?disabled=${this.disabled}
-                        ?required=${this.required}
-                        ?readonly=${this.readonly}
-                        autocomplete=${ifDefined(this.autocomplete)}
-                    />
-                </form>
+                <div id="form-container" class="input">
+                    <form id="formWrapper" class="input">
+                        <input
+                            type=${this.type}
+                            aria-describedby=${this.helpTextId}
+                            aria-label=${this.label || this.placeholder}
+                            aria-invalid=${ifDefined(this.invalid || undefined)}
+                            class="input"
+                            maxlength=${ifDefined(
+                                this.maxlength > -1 ? this.maxlength : undefined
+                            )}
+                            minlength=${ifDefined(
+                                this.minlength > -1 ? this.minlength : undefined
+                            )}
+                            pattern=${ifDefined(this.pattern)}
+                            placeholder=${this.placeholder}
+                            .value=${live(this.displayValue)}
+                            ?disabled=${this.disabled}
+                            ?required=${this.required}
+                            ?readonly=${this.readonly}
+                            autocomplete=${ifDefined(this.autocomplete)}
+                        />
+                    </form>
+                </div>
             `;
         }
         return html`

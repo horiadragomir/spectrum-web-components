@@ -143,7 +143,8 @@ textarea {
     );
 }
 
-form.input {
+form.input,
+#form-container {
     display: flex;
     padding: 0 !important;
     border: 0;
