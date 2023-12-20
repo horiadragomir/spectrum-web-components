@@ -34,6 +34,7 @@ import '@spectrum-web-components/icons-workflow/icons/sp-icon-alert.js';
 
 import textfieldStyles from './textfield.css.js';
 import checkmarkStyles from '@spectrum-web-components/icon/src/spectrum-icon-checkmark.css.js';
+import { isWebKit } from '@spectrum-web-components/shared';
 
 const textfieldTypes = ['text', 'url', 'tel', 'email', 'password'] as const;
 export type TextfieldType = typeof textfieldTypes[number];
@@ -47,6 +48,8 @@ export class TextfieldBase extends ManageHelpText(Focusable) {
         return [textfieldStyles, checkmarkStyles];
     }
 
+    private _firstUpdateAfterConnected = true;
+
     private _inputRef?: HTMLInputElement | HTMLTextAreaElement;
     private _formRef?: HTMLFormElement;
 
@@ -59,7 +62,7 @@ export class TextfieldBase extends ManageHelpText(Focusable) {
     @property({ type: Boolean, reflect: true })
     public focused = false;
 
-    @query('input.input, textarea.input')
+    @query('.input, input.input, textarea.input')
     protected inputElement!: HTMLInputElement | HTMLTextAreaElement;
 
     @property({ type: Boolean, reflect: true })
@@ -134,7 +137,10 @@ export class TextfieldBase extends ManageHelpText(Focusable) {
         | HTMLTextAreaElement['autocomplete'];
 
     public override get focusElement(): HTMLInputElement | HTMLTextAreaElement {
-        return this._inputRef ?? this.inputElement;
+        if (isWebKit()) {
+            return this._inputRef ?? this.inputElement;
+        }
+        return this.inputElement;
     }
 
     /**
@@ -201,6 +207,16 @@ export class TextfieldBase extends ManageHelpText(Focusable) {
         this.focused = !this.readonly && false;
     }
 
+    protected handleInputSubmit(event: Event): void {
+        this.dispatchEvent(
+            new Event('submit', {
+                cancelable: true,
+                bubbles: true,
+            })
+        );
+        event.preventDefault();
+    }
+
     private _eventHandlers = {
         input: this.handleInput.bind(this),
         change: this.handleChange.bind(this),
@@ -209,8 +225,7 @@ export class TextfieldBase extends ManageHelpText(Focusable) {
         submit: this.handleInputSubmit.bind(this),
     };
 
-    protected override firstUpdated(changes: PropertyValues): void {
-        super.firstUpdated(changes);
+    protected firstUpdateAfterConnected(): void {
         this._inputRef = this.inputElement;
         if (this.formElement) {
             this._formRef = this.formElement;
@@ -237,42 +252,49 @@ export class TextfieldBase extends ManageHelpText(Focusable) {
         }
     }
 
-    override disconnectedCallback(): void {
-        this._inputRef?.removeEventListener(
-            'change',
-            this._eventHandlers['change']
-        );
-        this._inputRef?.removeEventListener(
-            'input',
-            this._eventHandlers['input']
-        );
-        this._inputRef?.removeEventListener(
-            'focus',
-            this._eventHandlers['focus']
-        );
-        this._inputRef?.removeEventListener(
-            'blur',
-            this._eventHandlers['blur']
-        );
-        if (this._formRef) {
-            this._formRef.remove();
-            this._formRef.removeEventListener(
-                'submit',
-                this._eventHandlers.submit
-            );
+    protected override updated(changes: PropertyValues): void {
+        super.updated(changes);
+        if (isWebKit() && this._firstUpdateAfterConnected) {
+            this._firstUpdateAfterConnected = false;
+            this.firstUpdateAfterConnected();
         }
-        this._formRef = undefined;
-        super.disconnectedCallback();
     }
 
-    private handleInputSubmit(event: Event): void {
-        this.dispatchEvent(
-            new Event('submit', {
-                cancelable: true,
-                bubbles: true,
-            })
-        );
-        event.preventDefault();
+    override connectedCallback(): void {
+        super.connectedCallback();
+        if (isWebKit()) {
+            this._firstUpdateAfterConnected = true;
+        }
+    }
+
+    override disconnectedCallback(): void {
+        if (isWebKit()) {
+            this._inputRef?.removeEventListener(
+                'change',
+                this._eventHandlers['change']
+            );
+            this._inputRef?.removeEventListener(
+                'input',
+                this._eventHandlers['input']
+            );
+            this._inputRef?.removeEventListener(
+                'focus',
+                this._eventHandlers['focus']
+            );
+            this._inputRef?.removeEventListener(
+                'blur',
+                this._eventHandlers['blur']
+            );
+            if (this._formRef) {
+                this._formRef.remove();
+                this._formRef.removeEventListener(
+                    'submit',
+                    this._eventHandlers.submit
+                );
+            }
+            this._formRef = undefined;
+        }
+        super.disconnectedCallback();
     }
 
     protected renderStateIcons(): TemplateResult | typeof nothing {
@@ -330,30 +352,59 @@ export class TextfieldBase extends ManageHelpText(Focusable) {
     }
 
     private get renderInput(): TemplateResult {
+        if (isWebKit()) {
+            return html`
+                <!-- @ts-ignore -->
+                <form id="formWrapper" class="input">
+                    <input
+                        type=${this.type}
+                        aria-describedby=${this.helpTextId}
+                        aria-label=${this.label || this.placeholder}
+                        aria-invalid=${ifDefined(this.invalid || undefined)}
+                        class="input"
+                        maxlength=${ifDefined(
+                            this.maxlength > -1 ? this.maxlength : undefined
+                        )}
+                        minlength=${ifDefined(
+                            this.minlength > -1 ? this.minlength : undefined
+                        )}
+                        pattern=${ifDefined(this.pattern)}
+                        placeholder=${this.placeholder}
+                        .value=${live(this.displayValue)}
+                        ?disabled=${this.disabled}
+                        ?required=${this.required}
+                        ?readonly=${this.readonly}
+                        autocomplete=${ifDefined(this.autocomplete)}
+                    />
+                </form>
+            `;
+        }
         return html`
             <!-- @ts-ignore -->
-            <form id="formWrapper" class="input">
-                <input
-                    type=${this.type}
-                    aria-describedby=${this.helpTextId}
-                    aria-label=${this.label || this.placeholder}
-                    aria-invalid=${ifDefined(this.invalid || undefined)}
-                    class="input"
-                    maxlength=${ifDefined(
-                        this.maxlength > -1 ? this.maxlength : undefined
-                    )}
-                    minlength=${ifDefined(
-                        this.minlength > -1 ? this.minlength : undefined
-                    )}
-                    pattern=${ifDefined(this.pattern)}
-                    placeholder=${this.placeholder}
-                    .value=${live(this.displayValue)}
-                    ?disabled=${this.disabled}
-                    ?required=${this.required}
-                    ?readonly=${this.readonly}
-                    autocomplete=${ifDefined(this.autocomplete)}
-                />
-            </form>
+            <input
+                type=${this.type}
+                aria-describedby=${this.helpTextId}
+                aria-label=${this.label || this.placeholder}
+                aria-invalid=${ifDefined(this.invalid || undefined)}
+                class="input"
+                maxlength=${ifDefined(
+                    this.maxlength > -1 ? this.maxlength : undefined
+                )}
+                minlength=${ifDefined(
+                    this.minlength > -1 ? this.minlength : undefined
+                )}
+                pattern=${ifDefined(this.pattern)}
+                placeholder=${this.placeholder}
+                .value=${live(this.displayValue)}
+                @change=${this.handleChange}
+                @input=${this.handleInput}
+                @focus=${this.onFocus}
+                @blur=${this.onBlur}
+                ?disabled=${this.disabled}
+                ?required=${this.required}
+                ?readonly=${this.readonly}
+                autocomplete=${ifDefined(this.autocomplete)}
+            />
         `;
     }
 
